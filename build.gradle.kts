@@ -18,6 +18,7 @@ val kotliqueryVersion = "1.3.1"
 val hikarycpVersion = "3.4.2"
 val postgresqlVersion = "42.2.12"
 val flywayVersion = "6.3.3"
+val caffeineVersion = "2.8.2"
 val h2Version = "1.4.200"
 val testcontainersPostgresVersion = "1.14.0"
 val kotlintestVersion = "3.4.2"
@@ -69,6 +70,7 @@ dependencies {
     implementation("com.zaxxer:HikariCP:$hikarycpVersion")
     implementation("org.postgresql:postgresql:$postgresqlVersion")
     implementation("org.flywaydb:flyway-core:$flywayVersion")
+    implementation("com.github.ben-manes.caffeine:caffeine:$caffeineVersion")
     runtimeOnly("ch.qos.logback:logback-classic:$logbackVersion")
     implementation("net.logstash.logback:logstash-logback-encoder:$logstashLogbackEncoderVersion")
     testImplementation("com.h2database:h2:$h2Version")
