@@ -18,6 +18,7 @@ import io.nais.security.oauth2.health.HealthCheck
 import io.nais.security.oauth2.keystore.RotatingKeyStore
 import io.nais.security.oauth2.keystore.RotatingKeyStorePostgres
 import io.nais.security.oauth2.model.CacheProperties
+import io.nais.security.oauth2.model.SubjectTokenMapping
 import io.nais.security.oauth2.model.WellKnown
 import io.nais.security.oauth2.registration.ClientRegistry
 import io.nais.security.oauth2.registration.ClientRegistryPostgres
@@ -119,7 +120,7 @@ class AuthorizationServerProperties(
     }
 }
 
-class SubjectTokenIssuer(private val wellKnownUrl: String) {
+class SubjectTokenIssuer(private val wellKnownUrl: String, val tokenMappings: List<SubjectTokenMapping> = emptyList()) {
     val wellKnown: WellKnown = runBlocking {
         log.info("getting OAuth2 server metadata from well-known url=$wellKnownUrl")
         defaultHttpClient.get(wellKnownUrl).body()

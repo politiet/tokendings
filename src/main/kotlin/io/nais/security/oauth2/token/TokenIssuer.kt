@@ -10,10 +10,14 @@ import io.nais.security.oauth2.metrics.Metrics.issuedTokensCounter
 import io.nais.security.oauth2.model.OAuth2Client
 import io.nais.security.oauth2.model.OAuth2Exception
 import io.nais.security.oauth2.model.OAuth2TokenExchangeRequest
+import io.nais.security.oauth2.model.SubjectTokenMapping
+import mu.KotlinLogging
 import java.net.URL
 import java.time.Instant
 import java.util.Date
 import java.util.UUID
+
+private val log = KotlinLogging.logger { }
 
 class TokenIssuer(authorizationServerProperties: AuthorizationServerProperties) {
 
@@ -31,6 +35,10 @@ class TokenIssuer(authorizationServerProperties: AuthorizationServerProperties) 
         }
 
     private val internalTokenValidator: TokenValidator = TokenValidator(issuerUrl, rotatingKeyStore)
+    private val issuerSubjectTokenMappings: Map<String, List<SubjectTokenMapping>> =
+        authorizationServerProperties.subjectTokenIssuers.associate {
+            it.issuer to it.tokenMappings
+        }
 
     fun publicJwkSet(): JWKSet = rotatingKeyStore.publicJWKSet()
 
@@ -58,6 +66,7 @@ class TokenIssuer(authorizationServerProperties: AuthorizationServerProperties) 
                     subjectTokenClaims.issuer?.let { claim("idp", it) }
                 }
             }
+            .mapSubjectTokenClaims(issuer, subjectTokenClaims)
             .build().sign(rotatingKeyStore.currentSigningKey())
             .also {
                 issuedTokensCounter.labels(targetAudience).inc()
@@ -76,4 +85,33 @@ class TokenIssuer(authorizationServerProperties: AuthorizationServerProperties) 
                     )
             }
         }
+
+    private fun JWTClaimsSet.Builder.mapSubjectTokenClaims(issuer: String?, subjectTokenClaims: JWTClaimsSet): JWTClaimsSet.Builder {
+        if (issuer == null) {
+            return this
+        }
+
+        val tokenMappings = issuerSubjectTokenMappings[issuer] ?: return this
+
+        for (mapping in tokenMappings) {
+            val claim = mapping.claim
+            if (!subjectTokenClaims.claims.containsKey(claim)) {
+                continue
+            }
+
+            try {
+                val existingValue = subjectTokenClaims.getStringClaim(claim)
+                for (valueMapping in mapping.valueMappings) {
+                    if (existingValue == valueMapping.from) {
+                        this.claim(claim, valueMapping.to)
+                    }
+                }
+            } catch (e: Exception) {
+                log.warn(e) { "could not map claim '$claim' for token with issuer=$issuer" }
+                continue
+            }
+        }
+
+        return this
+    }
 }
