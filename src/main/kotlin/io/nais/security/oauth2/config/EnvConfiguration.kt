@@ -113,14 +113,6 @@ internal fun databaseConfig(): DatabaseConfig {
 
 internal fun clientRegistrationAuthProperties(): ClientRegistrationAuthProperties {
     val wellknownUrl = konfig.getOrNull(Key(AUTH_WELL_KNOWN_URL, stringType))
-
-    val clientIdPrefixKidMap = mutableMapOf<String, String>()
-    val mapper = jacksonObjectMapper()
-    val authJwks: AuthClientJwksKeys = mapper.readValue(konfig[Key(AUTH_CLIENT_JWKS, stringType)])
-    authJwks.keys.forEach {
-        clientIdPrefixKidMap[it.kid] = it.clientIdPrefix
-    }
-
     val jwks = konfig[Key(AUTH_CLIENT_JWKS, stringType)].let { JWKSet.parse(it) }.also { jwkSet ->
         log.info("Loaded ${jwkSet.keys.size} keys from JWKS with kids: ${jwkSet.keys.map { it.keyID }}")
     }
@@ -131,7 +123,6 @@ internal fun clientRegistrationAuthProperties(): ClientRegistrationAuthPropertie
             acceptedAudience = konfig[Key(AUTH_ACCEPTED_AUDIENCE, listType(stringType, Regex(",")))],
             acceptedRoles = BearerTokenAuth.ACCEPTED_ROLES_CLAIM_VALUE,
             softwareStatementJwks = jwks,
-            clientIdPrefixKidMap = clientIdPrefixKidMap
         )
     } else {
         val issuer = konfig[Key(AUTH_CLIENT_ID, stringType)]
@@ -140,7 +131,6 @@ internal fun clientRegistrationAuthProperties(): ClientRegistrationAuthPropertie
             acceptedAudience = konfig[Key(AUTH_ACCEPTED_AUDIENCE, listType(stringType, Regex(",")))],
             acceptedRoles = emptyList(),
             softwareStatementJwks = jwks,
-            clientIdPrefixKidMap = clientIdPrefixKidMap
         )
     }
 }
