@@ -56,18 +56,21 @@ data class ClientRegistrationAuthProperties(
     val authProvider: AuthProvider,
     val acceptedAudience: List<String>,
     val acceptedRoles: List<String> = BearerTokenAuth.ACCEPTED_ROLES_CLAIM_VALUE,
-    val softwareStatementJwks: JWKSet
+    val softwareStatementJwks: JWKSet,
+    val clientIdPrefixKidMap: Map<String,String>
 ) {
     constructor(
         identityProviderWellKnownUrl: String,
         acceptedAudience: List<String>,
         acceptedRoles: List<String> = BearerTokenAuth.ACCEPTED_ROLES_CLAIM_VALUE,
-        softwareStatementJwks: JWKSet
+        softwareStatementJwks: JWKSet,
+        clientIdPrefixKidMap: Map<String, String>
     ) : this(
         authProvider = AuthProvider.fromWellKnown(identityProviderWellKnownUrl),
         acceptedAudience = acceptedAudience,
         acceptedRoles = acceptedRoles,
-        softwareStatementJwks = softwareStatementJwks
+        softwareStatementJwks = softwareStatementJwks,
+        clientIdPrefixKidMap = clientIdPrefixKidMap
     )
 
     val issuer = authProvider.issuer

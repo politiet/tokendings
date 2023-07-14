@@ -1,5 +1,7 @@
 package io.nais.security.oauth2.config
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.natpryce.konfig.ConfigurationProperties
 import com.natpryce.konfig.EnvironmentVariables
 import com.natpryce.konfig.Key
@@ -26,6 +28,7 @@ import io.nais.security.oauth2.config.EnvKey.DEFAULT_TOKEN_EXPIRY_SECONDS
 import io.nais.security.oauth2.config.EnvKey.ISSUER_URL
 import io.nais.security.oauth2.config.EnvKey.SUBJECT_TOKEN_ISSUERS
 import io.nais.security.oauth2.config.EnvKey.TOKEN_EXPIRY_SECONDS
+import io.nais.security.oauth2.model.AuthClientJwksKeys
 import mu.KotlinLogging
 import java.time.Duration
 
@@ -110,6 +113,14 @@ internal fun databaseConfig(): DatabaseConfig {
 
 internal fun clientRegistrationAuthProperties(): ClientRegistrationAuthProperties {
     val wellknownUrl = konfig.getOrNull(Key(AUTH_WELL_KNOWN_URL, stringType))
+
+    val clientIdPrefixKidMap = mutableMapOf<String, String>()
+    val mapper = jacksonObjectMapper()
+    val authJwks: AuthClientJwksKeys = mapper.readValue(konfig[Key(AUTH_CLIENT_JWKS, stringType)])
+    authJwks.keys.forEach {
+        clientIdPrefixKidMap[it.kid] = it.clientIdPrefix
+    }
+
     val jwks = konfig[Key(AUTH_CLIENT_JWKS, stringType)].let { JWKSet.parse(it) }.also { jwkSet ->
         log.info("Loaded ${jwkSet.keys.size} keys from JWKS with kids: ${jwkSet.keys.map { it.keyID }}")
     }
@@ -119,7 +130,8 @@ internal fun clientRegistrationAuthProperties(): ClientRegistrationAuthPropertie
             authProvider = AuthProvider.fromWellKnown(wellknownUrl),
             acceptedAudience = konfig[Key(AUTH_ACCEPTED_AUDIENCE, listType(stringType, Regex(",")))],
             acceptedRoles = BearerTokenAuth.ACCEPTED_ROLES_CLAIM_VALUE,
-            softwareStatementJwks = jwks
+            softwareStatementJwks = jwks,
+            clientIdPrefixKidMap = clientIdPrefixKidMap
         )
     } else {
         val issuer = konfig[Key(AUTH_CLIENT_ID, stringType)]
@@ -127,7 +139,8 @@ internal fun clientRegistrationAuthProperties(): ClientRegistrationAuthPropertie
             authProvider = AuthProvider.fromSelfSigned(issuer, jwks),
             acceptedAudience = konfig[Key(AUTH_ACCEPTED_AUDIENCE, listType(stringType, Regex(",")))],
             acceptedRoles = emptyList(),
-            softwareStatementJwks = jwks
+            softwareStatementJwks = jwks,
+            clientIdPrefixKidMap = clientIdPrefixKidMap
         )
     }
 }

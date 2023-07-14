@@ -41,12 +41,23 @@ data class ClientRegistration(
 )
 
 data class SoftwareStatement(
-    val appId: String,
+    val appId: String, // "cluster:ns:app"
     val accessPolicyInbound: List<String> = emptyList(),
     val accessPolicyOutbound: List<String> = emptyList()
 )
 
+data class AuthClientJwksKeys(
+    @JsonProperty("keys") val keys: List<AuthClientJksKey> = emptyList()
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class AuthClientJksKey(
+    @JsonProperty("clientIdPrefix" ) var clientIdPrefix : String = "",
+    @JsonProperty("kid"            ) var kid            : String
+)
+
 fun ClientRegistrationRequest.verifySoftwareStatement(jwkSet: JWKSet): SoftwareStatement =
+
     SignedJWT.parse(this.softwareStatementJwt).verify(
         DefaultJWTClaimsVerifier(
             JWTClaimsSet.Builder().build(),

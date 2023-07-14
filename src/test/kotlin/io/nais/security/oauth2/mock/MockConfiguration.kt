@@ -48,7 +48,8 @@ fun mockConfig(
             identityProviderWellKnownUrl = mockOAuth2Server.wellKnownUrl("aadmock").toString(),
             acceptedAudience = listOf("tokendings"),
             acceptedRoles = BearerTokenAuth.ACCEPTED_ROLES_CLAIM_VALUE,
-            softwareStatementJwks = jwkSet()
+            softwareStatementJwks = jwkSet(),
+            emptyMap()
         )
         else -> mockBearerTokenAuthenticationProperties()
     }
