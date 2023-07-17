@@ -28,7 +28,6 @@ import io.nais.security.oauth2.config.EnvKey.DEFAULT_TOKEN_EXPIRY_SECONDS
 import io.nais.security.oauth2.config.EnvKey.ISSUER_URL
 import io.nais.security.oauth2.config.EnvKey.SUBJECT_TOKEN_ISSUERS
 import io.nais.security.oauth2.config.EnvKey.TOKEN_EXPIRY_SECONDS
-import io.nais.security.oauth2.model.AuthClientJwksKeys
 import mu.KotlinLogging
 import java.time.Duration
 

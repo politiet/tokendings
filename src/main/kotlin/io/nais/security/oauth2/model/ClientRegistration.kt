@@ -46,16 +46,6 @@ data class SoftwareStatement(
     val accessPolicyOutbound: List<String> = emptyList()
 )
 
-data class AuthClientJwksKeys(
-    @JsonProperty("keys") val keys: List<AuthClientJksKey> = emptyList()
-)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class AuthClientJksKey(
-    @JsonProperty("clientIdPrefix" ) var clientIdPrefix : String = "",
-    @JsonProperty("kid"            ) var kid            : String
-)
-
 fun ClientRegistrationRequest.verifySoftwareStatement(jwkSet: JWKSet): SoftwareStatement =
 
     SignedJWT.parse(this.softwareStatementJwt).verify(
