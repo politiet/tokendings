@@ -53,7 +53,7 @@ data class ClientRegistryProperties(
     val dataSource: DataSource
 )
 data class ClientRegistrationAuthProperties(
-    val authProvider: AuthProvider,
+    val authProviders: Map<String, AuthProvider>,
     val acceptedAudience: List<String>,
     val acceptedRoles: List<String> = BearerTokenAuth.ACCEPTED_ROLES_CLAIM_VALUE,
     val softwareStatementJwks: JWKSet
@@ -64,14 +64,11 @@ data class ClientRegistrationAuthProperties(
         acceptedRoles: List<String> = BearerTokenAuth.ACCEPTED_ROLES_CLAIM_VALUE,
         softwareStatementJwks: JWKSet,
     ) : this(
-        authProvider = AuthProvider.fromWellKnown(identityProviderWellKnownUrl),
+        authProviders = AuthProvider.fromWellKnownToAuthProviderMap(identityProviderWellKnownUrl),
         acceptedAudience = acceptedAudience,
         acceptedRoles = acceptedRoles,
         softwareStatementJwks = softwareStatementJwks
     )
-
-    val issuer = authProvider.issuer
-    val jwkProvider = authProvider.jwkProvider
 }
 
 class AuthProvider(
@@ -79,6 +76,10 @@ class AuthProvider(
     val jwkProvider: JwkProvider
 ) {
     companion object {
+        fun fromWellKnownToAuthProviderMap(wellKnown: String): Map<String, AuthProvider> {
+            val wk = fromWellKnown(wellKnown)
+            return mapOf(Pair(wk.issuer, wk))
+        }
         fun fromWellKnown(wellKnownUrl: String): AuthProvider {
             val wellKnown: WellKnown = runBlocking {
                 log.info("getting OpenID Connect server metadata from well-known url=$wellKnownUrl")

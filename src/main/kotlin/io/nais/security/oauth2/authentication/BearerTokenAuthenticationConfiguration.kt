@@ -27,10 +27,16 @@ object BearerTokenAuth {
 fun AuthenticationConfig.clientRegistrationAuth(appConfig: AppConfiguration) {
     jwt(CLIENT_REGISTRATION_AUTH) {
         val properties = appConfig.clientRegistrationAuthProperties
-        val jwkProvider = properties.jwkProvider
         realm = "BEARER_AUTH"
         verifier { token ->
-            bearerTokenVerifier(jwkProvider, properties.issuer, token)
+            val issuer = JWT.decode(token.getBlob()).issuer
+            val authProvider = properties.authProviders[issuer]
+                ?: throw OAuth2Exception(
+                    OAuth2Error.INVALID_CLIENT.setDescription(
+                        "unknown issuer (${issuer})"
+                    )
+                )
+            bearerTokenVerifier(authProvider.jwkProvider, authProvider.issuer, token)
         }
         validate { credentials ->
             try {

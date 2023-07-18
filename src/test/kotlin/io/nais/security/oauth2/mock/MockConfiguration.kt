@@ -76,10 +76,7 @@ fun mockBearerTokenAuthenticationProperties(): ClientRegistrationAuthProperties 
     )
 
 fun mockBearerTokenAuthenticationProperties(wellKnown: WellKnown, jwkProvider: JwkProvider): ClientRegistrationAuthProperties =
-    mockk<ClientRegistrationAuthProperties>().also {
-        every { it.issuer } returns wellKnown.issuer
-        every { it.jwkProvider } returns jwkProvider
-    }
+    mockk<ClientRegistrationAuthProperties>()
 
 fun rotatingKeyStore(): RotatingKeyStore = MockRotatingKeyStore()
 

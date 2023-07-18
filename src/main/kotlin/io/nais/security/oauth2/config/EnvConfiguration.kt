@@ -1,7 +1,5 @@
 package io.nais.security.oauth2.config
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import com.natpryce.konfig.ConfigurationProperties
 import com.natpryce.konfig.EnvironmentVariables
 import com.natpryce.konfig.Key
@@ -51,6 +49,7 @@ internal object EnvKey {
     const val AUTH_WELL_KNOWN_URL = "AUTH_WELL_KNOWN_URL"
     const val AUTH_CLIENT_JWKS = "AUTH_CLIENT_JWKS"
     const val AUTH_CLIENT_ID = "AUTH_CLIENT_ID"
+    const val AUTH_CLIENTS = "AUTH_CLIENTS"
     const val APPLICATION_PORT = "APPLICATION_PORT"
     const val TOKEN_EXPIRY_SECONDS = "TOKEN_EXPIRY_SECONDS"
     const val DEFAULT_TOKEN_EXPIRY_SECONDS = 900L
@@ -115,18 +114,19 @@ internal fun clientRegistrationAuthProperties(): ClientRegistrationAuthPropertie
     val jwks = konfig[Key(AUTH_CLIENT_JWKS, stringType)].let { JWKSet.parse(it) }.also { jwkSet ->
         log.info("Loaded ${jwkSet.keys.size} keys from JWKS with kids: ${jwkSet.keys.map { it.keyID }}")
     }
+    val issuer = konfig[Key(AUTH_CLIENT_ID, stringType)]
 
     return if (wellknownUrl != null) {
+        val authProvider = AuthProvider.fromWellKnown(wellknownUrl)
         ClientRegistrationAuthProperties(
-            authProvider = AuthProvider.fromWellKnown(wellknownUrl),
+            authProviders = mapOf(Pair(authProvider.issuer, authProvider)),
             acceptedAudience = konfig[Key(AUTH_ACCEPTED_AUDIENCE, listType(stringType, Regex(",")))],
             acceptedRoles = BearerTokenAuth.ACCEPTED_ROLES_CLAIM_VALUE,
             softwareStatementJwks = jwks,
         )
     } else {
-        val issuer = konfig[Key(AUTH_CLIENT_ID, stringType)]
         ClientRegistrationAuthProperties(
-            authProvider = AuthProvider.fromSelfSigned(issuer, jwks),
+            authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, jwks))),
             acceptedAudience = konfig[Key(AUTH_ACCEPTED_AUDIENCE, listType(stringType, Regex(",")))],
             acceptedRoles = emptyList(),
             softwareStatementJwks = jwks,

@@ -46,6 +46,23 @@ data class SoftwareStatement(
     val accessPolicyOutbound: List<String> = emptyList()
 )
 
+data class AuthClients(
+    @JsonProperty("clients") var clients: ArrayList<AuthClient> = arrayListOf()
+)
+
+data class AuthClient(
+    @JsonProperty("clientId") var clientId: String,
+    @JsonProperty("prefix") var prefix: String,
+    @JsonProperty("keys") var keys: ArrayList<AuthClientKeys> = arrayListOf()
+)
+
+data class AuthClientKeys(
+    @JsonProperty("kty") var kty: String,
+    @JsonProperty("kid") var kid: String,
+    @JsonProperty("n") var n: String,
+    @JsonProperty("e") var e: String
+)
+
 fun ClientRegistrationRequest.verifySoftwareStatement(jwkSet: JWKSet): SoftwareStatement =
 
     SignedJWT.parse(this.softwareStatementJwt).verify(

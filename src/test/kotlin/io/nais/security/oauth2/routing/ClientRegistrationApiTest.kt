@@ -98,7 +98,7 @@ internal class ClientRegistrationApiTest {
             val config = mockConfig(
                 this,
                 ClientRegistrationAuthProperties(
-                    authProvider = AuthProvider.fromSelfSigned("jwker", signingKeySet),
+                    authProviders = mapOf(Pair("jwker", AuthProvider.fromSelfSigned("jwker", signingKeySet))),
                     acceptedAudience = listOf("http://localhost:8080/client/registration"),
                     softwareStatementJwks = signingKeySet,
                     acceptedRoles = emptyList()
