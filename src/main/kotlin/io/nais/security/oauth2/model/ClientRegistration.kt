@@ -47,13 +47,13 @@ data class SoftwareStatement(
 )
 
 data class AuthClients(
-    @JsonProperty("clients") var clients: ArrayList<AuthClient> = arrayListOf()
+    @JsonProperty("clients") var clients: List<AuthClient> = arrayListOf()
 )
 
 data class AuthClient(
     @JsonProperty("clientId") var clientId: String,
     @JsonProperty("prefix") var prefix: String,
-    @JsonProperty("keys") var keys: ArrayList<AuthClientKeys> = arrayListOf()
+    @JsonProperty("keys") var keys: List<AuthClientKeys> = arrayListOf()
 )
 
 data class AuthClientKeys(

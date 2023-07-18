@@ -100,7 +100,7 @@ internal class ClientRegistrationApiTest {
                 ClientRegistrationAuthProperties(
                     authProviders = mapOf(Pair("jwker", AuthProvider.fromSelfSigned("jwker", signingKeySet))),
                     acceptedAudience = listOf("http://localhost:8080/client/registration"),
-                    softwareStatementJwks = signingKeySet,
+//                    softwareStatementJwks = signingKeySet,
                     acceptedRoles = emptyList()
                 )
             )
