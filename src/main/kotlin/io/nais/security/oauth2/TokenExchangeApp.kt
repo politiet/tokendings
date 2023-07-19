@@ -61,6 +61,7 @@ import kotlin.system.exitProcess
 private val log = KotlinLogging.logger { }
 
 fun main() {
+    log.info { "starting,........" }
     try {
         val engine = server()
         engine.addShutdownHook {
