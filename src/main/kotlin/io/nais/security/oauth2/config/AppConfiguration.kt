@@ -1,28 +1,18 @@
 package io.nais.security.oauth2.config
 
-import com.auth0.jwk.GuavaCachedJwkProvider
 import com.auth0.jwk.Jwk
 import com.auth0.jwk.JwkException
 import com.auth0.jwk.JwkProvider
-import com.auth0.jwk.JwkProviderBuilder
-import com.auth0.jwk.UrlJwkProvider
-import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.JWKSet
-import com.nimbusds.jose.jwk.RSAKey
 import com.zaxxer.hikari.HikariDataSource
-import io.ktor.client.call.body
-import io.ktor.client.request.get
+import io.ktor.client.call.*
+import io.ktor.client.request.*
 import io.nais.security.oauth2.authentication.BearerTokenAuth
-import io.nais.security.oauth2.config.JwkCache.BUCKET_SIZE
-import io.nais.security.oauth2.config.JwkCache.CACHE_SIZE
-import io.nais.security.oauth2.config.JwkCache.EXPIRES_IN
 import io.nais.security.oauth2.defaultHttpClient
 import io.nais.security.oauth2.health.DatabaseHealthCheck
 import io.nais.security.oauth2.health.HealthCheck
 import io.nais.security.oauth2.keystore.RotatingKeyStore
 import io.nais.security.oauth2.keystore.RotatingKeyStorePostgres
-import io.nais.security.oauth2.model.AuthClient
-import io.nais.security.oauth2.model.AuthClientKeys
 import io.nais.security.oauth2.model.CacheProperties
 import io.nais.security.oauth2.model.WellKnown
 import io.nais.security.oauth2.registration.ClientRegistry
@@ -36,12 +26,6 @@ import java.util.concurrent.TimeUnit
 import javax.sql.DataSource
 
 private val log = KotlinLogging.logger {}
-
-object JwkCache {
-    const val CACHE_SIZE = 10L
-    const val EXPIRES_IN = 24L
-    const val BUCKET_SIZE = 10L
-}
 
 data class AppConfiguration(
     val serverProperties: ServerProperties,
@@ -62,18 +46,14 @@ data class ClientRegistrationAuthProperties(
     val authProviders: Map<String, AuthProvider>,
     val acceptedAudience: List<String>,
     val acceptedRoles: List<String> = BearerTokenAuth.ACCEPTED_ROLES_CLAIM_VALUE,
-//    val softwareStatementJwks: JWKSet
 ) {
     constructor(
-        identityProviderWellKnownUrl: String,
         acceptedAudience: List<String>,
         acceptedRoles: List<String> = BearerTokenAuth.ACCEPTED_ROLES_CLAIM_VALUE,
-        softwareStatementJwks: JWKSet,
     ) : this(
-        authProviders = AuthProvider.fromWellKnownToAuthProviderMap(identityProviderWellKnownUrl),
+        authProviders = emptyMap(),
         acceptedAudience = acceptedAudience,
         acceptedRoles = acceptedRoles,
-//        softwareStatementJwks = softwareStatementJwks
     )
 }
 
@@ -83,61 +63,14 @@ class AuthProvider(
     val jwkSet: JWKSet
 ) {
     companion object {
-        fun fromWellKnownToAuthProviderMap(wellKnown: String): Map<String, AuthProvider> {
-            val wk = fromWellKnown(wellKnown)
-            return mapOf(Pair(wk.issuer, wk))
-        }
-        fun fromWellKnown(wellKnownUrl: String): AuthProvider {
-            val wellKnown: WellKnown = runBlocking {
-                log.info("getting OpenID Connect server metadata from well-known url=$wellKnownUrl")
-                defaultHttpClient.get(wellKnownUrl).body()
-            }
-            val jwk = JwkProviderBuilder(URL(wellKnown.jwksUri))
-                .cached(CACHE_SIZE, EXPIRES_IN, TimeUnit.HOURS)
-                .rateLimited(BUCKET_SIZE, 1, TimeUnit.MINUTES)
-                .build()
-
-            val jwkSet = mutableListOf<JWK>()
-            val jwk2 = jwk as GuavaCachedJwkProvider
-            // kty, kid, n, e
-            jwk2.apply {
-//                val keys = AuthClientKeys(it.algorithm, it.id, it.publicKey)
-
-                log.info ( "break $this" )
-                log.info ( "break $this" )
-
-//                keys.
-            }
-
-
-            return AuthProvider(wellKnown.issuer, jwk, JWKSet())
-        }
         fun fromSelfSigned(issuer: String, jwkSet: JWKSet): AuthProvider {
             val jwk = JwkProvider { keyId ->
                 Jwk.fromValues(jwkSet.getKeyByKeyId(keyId)?.toJSONObject() ?: throw JwkException("JWK not found"))
-            }
-
-            jwk.apply {
-                log.info { "$this" }
-
             }
             return AuthProvider(issuer, jwk, jwkSet)
         }
     }
 }
-
-//class Geir: JwkProvider {
-//    private var jwkSet: JWKSet
-//
-//    constructor(jwkSet: JWKSet) {
-//        this.jwkSet = jwkSet
-//    }
-//
-//    override fun get(keyId: String?): Jwk {
-//        return this.jwkSet.keys.find { it.keyID == keyId }
-//    }
-//
-//}
 
 class AuthorizationServerProperties(
     val issuerUrl: String,

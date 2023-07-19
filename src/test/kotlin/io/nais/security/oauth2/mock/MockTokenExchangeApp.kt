@@ -25,10 +25,8 @@ fun main() {
     val mockOAuth2Server: MockOAuth2Server = startMockOAuth2Server()
 
     val clientRegistrationAuthProps = ClientRegistrationAuthProperties(
-        identityProviderWellKnownUrl = mockOAuth2Server.wellKnownUrl("/aadmock").toString(),
         acceptedAudience = listOf("tokendings"),
         acceptedRoles = BearerTokenAuth.ACCEPTED_ROLES_CLAIM_VALUE,
-        softwareStatementJwks = jwkerJwks
     )
 
     val config: AppConfiguration = mockConfig(mockOAuth2Server, clientRegistrationAuthProps)

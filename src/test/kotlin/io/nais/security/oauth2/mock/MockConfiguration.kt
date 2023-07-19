@@ -45,10 +45,8 @@ fun mockConfig(
     val clientRegAuthProperties = when {
         clientRegistrationAuthProperties != null -> clientRegistrationAuthProperties
         mockOAuth2Server != null -> ClientRegistrationAuthProperties(
-            identityProviderWellKnownUrl = mockOAuth2Server.wellKnownUrl("aadmock").toString(),
             acceptedAudience = listOf("tokendings"),
             acceptedRoles = BearerTokenAuth.ACCEPTED_ROLES_CLAIM_VALUE,
-            softwareStatementJwks = jwkSet()
         )
         else -> mockBearerTokenAuthenticationProperties()
     }
