@@ -12,9 +12,9 @@ jobs:
     permissions:
       contents: "read"
       id-token: "write"
-    outputs:
-      img_to_deploy: "europe-north1-docker.pkg.dev/nais-io/nais/images/tokendings@${{ steps.build-push.outputs.digest }}"
-      img_version: "${{ fromJSON(steps.metadata.outputs.json).labels['org.opencontainers.image.version'] }}"
+#    outputs:
+#      img_to_deploy: "europe-north1-docker.pkg.dev/nais-io/nais/images/tokendings@${{ steps.build-push.outputs.digest }}"
+#      img_version: "${{ fromJSON(steps.metadata.outputs.json).labels['org.opencontainers.image.version'] }}"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
