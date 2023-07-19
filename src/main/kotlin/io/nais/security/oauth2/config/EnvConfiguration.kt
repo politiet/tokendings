@@ -124,18 +124,19 @@ internal fun clientRegistrationAuthProperties(): ClientRegistrationAuthPropertie
         log.info("Loaded ${jwkSet.keys.size} keys from JWKS with kids: ${jwkSet.keys.map { it.keyID }}")
     }
     val jacksonMapper = jacksonObjectMapper()
-    val authClients = jacksonMapper.readValue(konfig[Key(AUTH_CLIENTS, stringType)], AuthClients::class.java)
     val authProviders = mutableMapOf<String, AuthProvider>()
-
-    if (authClients.clients.isEmpty()) {
-        val issuer = konfig[Key(AUTH_CLIENT_ID, stringType)]
-        authProviders[issuer] = AuthProvider.fromSelfSigned(issuer, "", jwks)
+    if (konfig.contains(Key(AUTH_CLIENTS, stringType))) {
+        val clients = jacksonMapper.readValue(konfig[Key(AUTH_CLIENTS, stringType)], AuthClients::class.java)
+        clients.clients.forEach {
+            val keysAsJson = jacksonMapper.writeValueAsString(it)
+            val authProvider = AuthProvider.fromSelfSigned(it.clientId, it.prefix, JWKSet.parse(keysAsJson))
+            authProviders[it.clientId] = authProvider
+        }
     }
 
-    authClients.clients.forEach {
-        val keysAsJson = jacksonMapper.writeValueAsString(it)
-        val authProvider = AuthProvider.fromSelfSigned(it.clientId, it.prefix, JWKSet.parse(keysAsJson))
-        authProviders[it.clientId] = authProvider
+    if (authProviders.isEmpty()) {
+        val issuer = konfig[Key(AUTH_CLIENT_ID, stringType)]
+        authProviders[issuer] = AuthProvider.fromSelfSigned(issuer, "", jwks)
     }
 
     return ClientRegistrationAuthProperties(
