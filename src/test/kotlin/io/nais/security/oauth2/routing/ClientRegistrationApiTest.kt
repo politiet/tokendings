@@ -68,7 +68,7 @@ internal class ClientRegistrationApiTest {
             val config = mockConfig(
                 this,
                 ClientRegistrationAuthProperties(
-                    authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, signingKeySet))),
+                    authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, "", signingKeySet))),
                     acceptedAudience = listOf("correct_aud"),
                     acceptedRoles = emptyList()
                 )
@@ -91,7 +91,7 @@ internal class ClientRegistrationApiTest {
             val config = mockConfig(
                 this,
                 ClientRegistrationAuthProperties(
-                    authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, signingKeySet))),
+                    authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, "", signingKeySet))),
                     acceptedAudience = listOf("test_aud"),
                     acceptedRoles = emptyList()
                 )
@@ -131,7 +131,7 @@ internal class ClientRegistrationApiTest {
             val config = mockConfig(
                 this,
                 ClientRegistrationAuthProperties(
-                    authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, signingKeySet))),
+                    authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, "", signingKeySet))),
                     acceptedAudience = listOf("correct_aud"),
                     acceptedRoles = listOf("correct_role")
                 )
@@ -170,7 +170,7 @@ internal class ClientRegistrationApiTest {
             val config = mockConfig(
                 this,
                 ClientRegistrationAuthProperties(
-                    authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, signingKeySet))),
+                    authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, "", signingKeySet))),
                     acceptedAudience = listOf("correct_aud"),
                     acceptedRoles = listOf("accepted_role")
                 )
@@ -328,7 +328,7 @@ internal class ClientRegistrationApiTest {
             val config = mockConfig(
                 this,
                 ClientRegistrationAuthProperties(
-                    authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, signingKeySet))),
+                    authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, "", signingKeySet))),
                     acceptedAudience = listOf("test"),
                     acceptedRoles = emptyList()
                 )

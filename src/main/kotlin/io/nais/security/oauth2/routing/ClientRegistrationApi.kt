@@ -1,30 +1,21 @@
 package io.nais.security.oauth2.routing
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.oauth2.sdk.OAuth2Error
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.call
+import io.ktor.http.*
+import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 import io.ktor.server.request.*
-import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.delete
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
-import io.ktor.util.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import io.nais.security.oauth2.authentication.BearerTokenAuth
 import io.nais.security.oauth2.config.AppConfiguration
-import io.nais.security.oauth2.config.clientRegistrationAuthProperties
 import io.nais.security.oauth2.model.AccessPolicy
 import io.nais.security.oauth2.model.ClientRegistration
 import io.nais.security.oauth2.model.ClientRegistrationRequest
 import io.nais.security.oauth2.model.GrantType
 import io.nais.security.oauth2.model.OAuth2Client
 import io.nais.security.oauth2.model.OAuth2Exception
-import io.nais.security.oauth2.model.SoftwareStatement
 import io.nais.security.oauth2.model.verifySoftwareStatement
 
 internal fun Route.clientRegistrationApi(config: AppConfiguration) {
@@ -33,11 +24,11 @@ internal fun Route.clientRegistrationApi(config: AppConfiguration) {
             post {
                 val request: ClientRegistrationRequest = call.receive(ClientRegistrationRequest::class).validate()
 
+                // We know a JWTPrincipal and the AuthProvider for its issuer exists since we passed ktor's authenticate
                 val issuer = call.principal<JWTPrincipal>()!!.issuer
-                val authProvider = config.clientRegistrationAuthProperties.authProviders[issuer]
+                val authProvider = config.clientRegistrationAuthProperties.authProviders[issuer]!!
 
-                val softwareStatement = request.verifySoftwareStatement(authProvider!!.jwkSet)
-                //                     //request.verifySoftwareStatement(acceptedSignatureKeys)
+                val softwareStatement = request.verifySoftwareStatement(authProvider)
 
                 val grantTypes: List<String> = when {
                     request.grantTypes.isEmpty() -> listOf(GrantType.TOKEN_EXCHANGE_GRANT)

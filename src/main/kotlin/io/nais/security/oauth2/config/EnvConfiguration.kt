@@ -129,12 +129,12 @@ internal fun clientRegistrationAuthProperties(): ClientRegistrationAuthPropertie
 
     if (authClients.clients.isEmpty()) {
         val issuer = konfig[Key(AUTH_CLIENT_ID, stringType)]
-        authProviders[issuer] = AuthProvider.fromSelfSigned(issuer, jwks)
+        authProviders[issuer] = AuthProvider.fromSelfSigned(issuer, "", jwks)
     }
 
     authClients.clients.forEach {
         val keysAsJson = jacksonMapper.writeValueAsString(it)
-        val authProvider = AuthProvider.fromSelfSigned(it.clientId, JWKSet.parse(keysAsJson))
+        val authProvider = AuthProvider.fromSelfSigned(it.clientId, it.prefix, JWKSet.parse(keysAsJson))
         authProviders[it.clientId] = authProvider
     }
 
@@ -142,7 +142,6 @@ internal fun clientRegistrationAuthProperties(): ClientRegistrationAuthPropertie
         authProviders = authProviders,
         acceptedAudience = konfig[Key(AUTH_ACCEPTED_AUDIENCE, listType(stringType, Regex(",")))],
         acceptedRoles = emptyList(),
-//            softwareStatementJwks = jwks,
     )
 
 }

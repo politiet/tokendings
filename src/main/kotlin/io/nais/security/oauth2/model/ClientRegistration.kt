@@ -5,11 +5,11 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectWriter
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.oauth2.sdk.OAuth2Error
+import io.nais.security.oauth2.config.AuthProvider
 import io.nais.security.oauth2.token.verify
 
 typealias SoftwareStatementJwt = String
@@ -52,7 +52,7 @@ data class AuthClients(
 
 data class AuthClient(
     @JsonProperty("clientId") var clientId: String,
-    @JsonProperty("prefix") var prefix: String,
+    @JsonProperty("prefix") var prefix: String = "",
     @JsonProperty("keys") var keys: List<AuthClientKeys> = arrayListOf()
 )
 
@@ -63,17 +63,18 @@ data class AuthClientKeys(
     @JsonProperty("e") var e: String
 )
 
-fun ClientRegistrationRequest.verifySoftwareStatement(jwkSet: JWKSet): SoftwareStatement =
+fun ClientRegistrationRequest.verifySoftwareStatement(authProvider: AuthProvider): SoftwareStatement =
 
     SignedJWT.parse(this.softwareStatementJwt).verify(
         DefaultJWTClaimsVerifier(
             JWTClaimsSet.Builder().build(),
             setOf("appId", "accessPolicyInbound", "accessPolicyOutbound")
         ),
-        jwkSet
+        authProvider.jwkSet
     ).let {
+        val appId = it.getStringClaim("appId") ?: throw OAuth2Exception(OAuth2Error.INVALID_REQUEST.setDescription("appId cannot be null"))
         SoftwareStatement(
-            it.getStringClaim("appId") ?: throw OAuth2Exception(OAuth2Error.INVALID_REQUEST.setDescription("appId cannot be null")),
+            appId,
             it.getStringListClaim("accessPolicyInbound") ?: emptyList(),
             it.getStringListClaim("accessPolicyOutbound") ?: emptyList()
         )

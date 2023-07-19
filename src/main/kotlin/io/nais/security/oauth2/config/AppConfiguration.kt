@@ -59,15 +59,16 @@ data class ClientRegistrationAuthProperties(
 
 class AuthProvider(
     val issuer: String,
+    val prefix: String,
     val jwkProvider: JwkProvider,
     val jwkSet: JWKSet
 ) {
     companion object {
-        fun fromSelfSigned(issuer: String, jwkSet: JWKSet): AuthProvider {
-            val jwk = JwkProvider { keyId ->
+        fun fromSelfSigned(issuer: String, prefix: String, jwkSet: JWKSet): AuthProvider {
+            val jwkProvider = JwkProvider { keyId ->
                 Jwk.fromValues(jwkSet.getKeyByKeyId(keyId)?.toJSONObject() ?: throw JwkException("JWK not found"))
             }
-            return AuthProvider(issuer, jwk, jwkSet)
+            return AuthProvider(issuer, prefix, jwkProvider, jwkSet)
         }
     }
 }

@@ -9,6 +9,7 @@ import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jwt.JWTClaimsSet
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
+import io.nais.security.oauth2.config.AuthProvider
 import io.nais.security.oauth2.token.sign
 import io.nais.security.oauth2.utils.generateRsaKey
 import org.junit.jupiter.api.Test
@@ -18,25 +19,27 @@ internal class ClientRegistrationKtTest {
     @Test
     fun `softwarestatement should successfully verify and parse into SoftwareStatement`() {
         val signingKey = generateRsaKey()
-
+        val authProvider = AuthProvider.fromSelfSigned("jwker", "", JWKSet(signingKey))
         val ss = JWTClaimsSet.Builder()
             .claim("appId", "app1")
             .claim("accessPolicyInbound", emptyList<String>())
             .claim("accessPolicyOutbound", emptyList<String>())
             .build()
             .sign(signingKey)
+
         val request = ClientRegistrationRequest(
             "name",
             JsonWebKeys(JWKSet(generateRsaKey())),
             ss.serialize()
         )
 
-        request.verifySoftwareStatement(JWKSet(signingKey)) shouldBe SoftwareStatement("app1", emptyList(), emptyList())
+        request.verifySoftwareStatement(authProvider) shouldBe SoftwareStatement("app1", emptyList(), emptyList())
     }
 
     @Test
     fun `softwarestatement with null values`() {
         val signingKey = generateRsaKey()
+        val authProvider = AuthProvider.fromSelfSigned("jwker", "", JWKSet(signingKey))
         val ss = JWSObject(
             JWSHeader.Builder(JWSAlgorithm.RS256).keyID(signingKey.keyID).build(),
             Payload(
@@ -59,7 +62,7 @@ internal class ClientRegistrationKtTest {
             JsonWebKeys(JWKSet(generateRsaKey())),
             ss.serialize()
         )
-        request.verifySoftwareStatement(JWKSet(signingKey)) shouldBe SoftwareStatement("cluster:ns:app1", emptyList(), listOf("cluster:ns:app2"))
+        request.verifySoftwareStatement(authProvider) shouldBe SoftwareStatement("cluster:ns:app1", emptyList(), listOf("cluster:ns:app2"))
 
         val ss2 = JWSObject(
             JWSHeader.Builder(JWSAlgorithm.RS256).keyID(signingKey.keyID).build(),
@@ -83,7 +86,7 @@ internal class ClientRegistrationKtTest {
                 "name",
                 JsonWebKeys(JWKSet(generateRsaKey())),
                 ss2.serialize()
-            ).verifySoftwareStatement(JWKSet(signingKey))
+            ).verifySoftwareStatement(authProvider)
         }
     }
 }
