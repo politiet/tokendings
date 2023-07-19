@@ -5,10 +5,12 @@ import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.oauth2.sdk.OAuth2Error
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.ktor.client.request.delete
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.*
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -46,185 +48,130 @@ internal class ClientRegistrationApiTest {
 
     @Test
     fun `401 on unauthorized requests`() {
-        withMockOAuth2Server {
-            val config = mockConfig(
-                this,
-                ClientRegistrationAuthProperties(
-                    acceptedAudience = emptyList(),
-                )
+        val config = mockConfig(
+            null,
+            ClientRegistrationAuthProperties(
+                acceptedAudience = emptyList(),
             )
-            testApplication {
-                application { tokenExchangeApp(config, DefaultRouting(config)) }
-                client.post("registration/client").status shouldBe HttpStatusCode.Unauthorized
-            }
+        )
+        testApplication {
+            application { tokenExchangeApp(config, DefaultRouting(config)) }
+            client.post("registration/client").status shouldBe HttpStatusCode.Unauthorized
         }
     }
 
     @Test
     fun `401 on incorrect audience in token`() {
-        withMockOAuth2Server {
-            val signingKeySet = jwkSet()
-            val issuer = "jwker"
-            val config = mockConfig(
-                this,
-                ClientRegistrationAuthProperties(
-                    authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, "", signingKeySet))),
-                    acceptedAudience = listOf("correct_aud"),
-                    acceptedRoles = emptyList()
-                )
+        val signingKeySet = jwkSet()
+        val issuer = "jwker"
+        val config = mockConfig(
+            null,
+            ClientRegistrationAuthProperties(
+                authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, "", signingKeySet))),
+                acceptedAudience = listOf("correct_aud"),
+                acceptedRoles = emptyList()
             )
-            val token = issueValidSelfSignedToken(signingKeySet, audience = "wrong_aud")
-            testApplication {
-                application { tokenExchangeApp(config, DefaultRouting(config)) }
-                client.post("registration/client") {
-                    header(HttpHeaders.Authorization, "Bearer $token")
-                }.status shouldBe HttpStatusCode.Unauthorized
-            }
+        )
+        val token = issueValidSelfSignedToken(signingKeySet, audience = "wrong_aud")
+        testApplication {
+            application { tokenExchangeApp(config, DefaultRouting(config)) }
+            client.post("registration/client") {
+                header(HttpHeaders.Authorization, "Bearer $token")
+            }.status shouldBe HttpStatusCode.Unauthorized
+
         }
     }
 
     @Test
     fun `successful client registration call with bearer token and signed software statement`() {
-        withMockOAuth2Server {
-            val signingKeySet = jwkSet()
-            val issuer = "jwker"
-            val config = mockConfig(
-                this,
-                ClientRegistrationAuthProperties(
-                    authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, "", signingKeySet))),
-                    acceptedAudience = listOf("test_aud"),
-                    acceptedRoles = emptyList()
-                )
+        val signingKeySet = jwkSet()
+        val issuer = "jwker"
+        val config = mockConfig(
+            null,
+            ClientRegistrationAuthProperties(
+                authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, "", signingKeySet))),
+                acceptedAudience = listOf("correct_aud"),
+                acceptedRoles = emptyList()
             )
-            val token = issueValidSelfSignedToken(signingKeySet)
+        )
+        val token = issueValidSelfSignedToken(signingKeySet)
 
-            testApplication {
-                application { tokenExchangeApp(config, DefaultRouting(config)) }
-                client.post("registration/client") {
-                    header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                    header(HttpHeaders.Authorization, "Bearer $token")
-                    setBody(
-                        ClientRegistrationRequest(
-                            clientName = "cluster1:ns1:client1",
-                            jwks = JsonWebKeys(jwkSet()),
-                            softwareStatementJwt = softwareStatementJwt(
-                                SoftwareStatement(
-                                    appId = "cluster1:ns1:client1",
-                                    accessPolicyInbound = listOf("cluster1:ns1:client2"),
-                                    accessPolicyOutbound = emptyList()
-                                ),
-                                signingKeySet.keys.first() as RSAKey
-                            )
-                        ).toJson()
-                    )
-                }.status shouldBe HttpStatusCode.Created
-                config.clientRegistry.findClient("cluster1:ns1:client1")?.clientId shouldBe "cluster1:ns1:client1"
-            }
+        testApplication {
+            application { tokenExchangeApp(config, DefaultRouting(config)) }
+            client.post("registration/client") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                header(HttpHeaders.Authorization, "Bearer $token")
+                setBody(
+                    ClientRegistrationRequest(
+                        clientName = "cluster1:ns1:client1",
+                        jwks = JsonWebKeys(jwkSet()),
+                        softwareStatementJwt = softwareStatementJwt(
+                            SoftwareStatement(
+                                appId = "cluster1:ns1:client1",
+                                accessPolicyInbound = listOf("cluster1:ns1:client2"),
+                                accessPolicyOutbound = emptyList()
+                            ),
+                            signingKeySet.keys.first() as RSAKey
+                        )
+                    ).toJson()
+                )
+            }.status shouldBe HttpStatusCode.Created
+            config.clientRegistry.findClient("cluster1:ns1:client1")?.clientId shouldBe "cluster1:ns1:client1"
         }
     }
 
     @Test
     fun `client registration call with valid token missing required claim roles should fail`() {
-        withMockOAuth2Server {
-            val signingKeySet = jwkSet()
-            val issuer = "jwker"
-            val config = mockConfig(
-                this,
-                ClientRegistrationAuthProperties(
-                    authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, "", signingKeySet))),
-                    acceptedAudience = listOf("correct_aud"),
-                    acceptedRoles = listOf("correct_role")
-                )
+        val signingKeySet = jwkSet()
+        val issuer = "jwker"
+        val config = mockConfig(
+            null,
+            ClientRegistrationAuthProperties(
+                authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, "", signingKeySet))),
+                acceptedAudience = listOf("correct_aud"),
+                acceptedRoles = listOf("correct_role")
             )
-            val token = issueValidSelfSignedToken(signingKeySet, claims = mapOf(Pair("roles", listOf("wrong_role"))))
+        )
+        val token = issueValidSelfSignedToken(signingKeySet, claims = mapOf(Pair("roles", listOf("wrong_role"))))
 
-            testApplication {
-                application { tokenExchangeApp(config, DefaultRouting(config)) }
-                client.post("registration/client") {
-                    header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                    header(HttpHeaders.Authorization, "Bearer $token")
-                    setBody(
-                        ClientRegistrationRequest(
-                            clientName = "cluster1:ns1:client1",
-                            jwks = JsonWebKeys(jwkSet()),
-                            softwareStatementJwt = softwareStatementJwt(
-                                SoftwareStatement(
-                                    appId = "cluster1:ns1:client1",
-                                    accessPolicyInbound = listOf("cluster1:ns1:client2"),
-                                    accessPolicyOutbound = emptyList()
-                                ),
-                                signingKeySet.keys.first() as RSAKey
-                            )
-                        ).toJson()
-                    )
-                }.status shouldBe HttpStatusCode.Unauthorized
-            }
-        }
-    }
-
-    @Test
-    fun `client registration call with valid bearer token with incorrect roles claim value should fail`() {
-        withMockOAuth2Server {
-            val signingKeySet = jwkSet()
-            val issuer = "jwker"
-            val config = mockConfig(
-                this,
-                ClientRegistrationAuthProperties(
-                    authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, "", signingKeySet))),
-                    acceptedAudience = listOf("correct_aud"),
-                    acceptedRoles = listOf("accepted_role")
+        testApplication {
+            application { tokenExchangeApp(config, DefaultRouting(config)) }
+            client.post("registration/client") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                header(HttpHeaders.Authorization, "Bearer $token")
+                setBody(
+                    ClientRegistrationRequest(
+                        clientName = "cluster1:ns1:client1",
+                        jwks = JsonWebKeys(jwkSet()),
+                        softwareStatementJwt = softwareStatementJwt(
+                            SoftwareStatement(
+                                appId = "cluster1:ns1:client1",
+                                accessPolicyInbound = listOf("cluster1:ns1:client2"),
+                                accessPolicyOutbound = emptyList()
+                            ),
+                            signingKeySet.keys.first() as RSAKey
+                        )
+                    ).toJson()
                 )
-            )
-            val token = this.issueToken(
-                "mockaad",
-                "client1",
-                DefaultOAuth2TokenCallback(
-                    issuerId = "mockaad",
-                    subject = "client1",
-                    audience = listOf("correct_aud"),
-                    claims = mapOf("roles" to listOf("not_accepted"))
-                )
-            ).serialize()
-
-            testApplication {
-                application { tokenExchangeApp(config, DefaultRouting(config)) }
-                client.post("registration/client") {
-                    header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                    header(HttpHeaders.Authorization, "Bearer $token")
-                    setBody(
-                        ClientRegistrationRequest(
-                            clientName = "cluster1:ns1:client1",
-                            jwks = JsonWebKeys(jwkSet()),
-                            softwareStatementJwt = softwareStatementJwt(
-                                SoftwareStatement(
-                                    appId = "cluster1:ns1:client1",
-                                    accessPolicyInbound = listOf("cluster1:ns1:client2"),
-                                    accessPolicyOutbound = emptyList()
-                                ),
-                                signingKeySet.keys.first() as RSAKey
-                            )
-                        ).toJson()
-                    )
-                }.status shouldBe HttpStatusCode.Unauthorized
-            }
+            }.status shouldBe HttpStatusCode.Unauthorized
         }
     }
 
     @Test
     fun `client registration call with valid bearer token and invalid software statement content should fail`() {
-        withMockOAuth2Server {
-            val signingKeySet = jwkSet()
-            val config = mockConfig(
-                this,
-                ClientRegistrationAuthProperties(
-                    acceptedAudience = listOf("correct_aud"),
-                )
+        val signingKeySet = jwkSet()
+        val config = mockConfig(
+            null,
+            ClientRegistrationAuthProperties(
+                acceptedAudience = listOf("correct_aud"),
+                authProviders = mapOf(Pair("test", AuthProvider.fromSelfSigned("test", "", signingKeySet)))
             )
-            val token = issueValidSelfSignedToken(signingKeySet, "test", "test", "test")
+        )
+        val token = issueValidSelfSignedToken(signingKeySet, "test")
 
-            @Language("JSON")
-            val invalidSoftwareStatement: String =
-                """
+        @Language("JSON")
+        val invalidSoftwareStatement: String =
+            """
                 {
                   "appId": "cluster:ns:app1",
                   "accessPolicyInbound": [
@@ -234,15 +181,17 @@ internal class ClientRegistrationApiTest {
                 }
                 """.trimIndent()
 
-            testApplication {
-                application { tokenExchangeApp(config, DefaultRouting(config)) }
-                client.post("registration/client") {
-                    header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                    header(HttpHeaders.Authorization, "Bearer $token")
-                    setBody(invalidSoftwareStatement)
-                }.status shouldBe HttpStatusCode.BadRequest
-                config.clientRegistry.findClient("cluster1:ns1:client1") shouldBe null
+        testApplication {
+            application { tokenExchangeApp(config, DefaultRouting(config)) }
+            val postResponse = client.post("registration/client") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                header(HttpHeaders.Authorization, "Bearer $token")
+                setBody(invalidSoftwareStatement)
             }
+
+            postResponse.status shouldBe HttpStatusCode.BadRequest
+            postResponse.bodyAsText() shouldBe "invalid request content"
+            config.clientRegistry.findClient("cluster1:ns1:client1") shouldBe null
         }
     }
 
@@ -322,25 +271,23 @@ internal class ClientRegistrationApiTest {
 
     @Test
     fun `delete non-existent client should return 204 No Content`() {
-        withMockOAuth2Server {
-            val signingKeySet = jwkSet()
-            val issuer = "jwkerino"
-            val config = mockConfig(
-                this,
-                ClientRegistrationAuthProperties(
-                    authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, "", signingKeySet))),
-                    acceptedAudience = listOf("test"),
-                    acceptedRoles = emptyList()
-                )
+        val signingKeySet = jwkSet()
+        val issuer = "jwkerino"
+        val config = mockConfig(
+            null,
+            ClientRegistrationAuthProperties(
+                authProviders = mapOf(Pair(issuer, AuthProvider.fromSelfSigned(issuer, "", signingKeySet))),
+                acceptedAudience = listOf("test"),
+                acceptedRoles = emptyList()
             )
-            val token = issueValidSelfSignedToken(signingKeySet, issuer, "test", "test")
-            testApplication {
-                application { tokenExchangeApp(config, DefaultRouting(config)) }
-                client.delete("registration/client/yolo") {
-                    header(HttpHeaders.Authorization, "Bearer $token")
-                }.status shouldBe HttpStatusCode.NoContent
-                config.clientRegistry.findClient("yolo") shouldBe null
-            }
+        )
+        val token = issueValidSelfSignedToken(signingKeySet, issuer, "test", "test")
+        testApplication {
+            application { tokenExchangeApp(config, DefaultRouting(config)) }
+            client.delete("registration/client/yolo") {
+                header(HttpHeaders.Authorization, "Bearer $token")
+            }.status shouldBe HttpStatusCode.NoContent
+            config.clientRegistry.findClient("yolo") shouldBe null
         }
     }
 
@@ -381,7 +328,7 @@ internal class ClientRegistrationApiTest {
         issuer: String = "jwker",
         audience: String = "correct_aud",
         subject: String = "test_sub",
-        claims: Map<String, List<String>> = emptyMap()
+        claims: Map<String, List<String>> = mapOf(Pair("roles", listOf("access_as_application")))
     ): String {
         val now = Instant.now()
         val tokenBuilder = JWTClaimsSet.Builder()
