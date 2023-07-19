@@ -5,6 +5,7 @@ import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
+import io.ktor.server.plugins.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -55,7 +56,14 @@ internal fun Route.clientRegistrationApi(config: AppConfiguration) {
                 )
             }
             delete("/{clientId}") {
+                // We know a JWTPrincipal and the AuthProvider for its issuer exists since we passed ktor's authenticate
+                val issuer = call.principal<JWTPrincipal>()!!.issuer
+                val authProvider = config.clientRegistrationAuthProperties.authProviders[issuer]!!
+
                 call.parameters["clientId"]?.let { clientId ->
+                    if (!clientId.startsWith(authProvider.prefix)) {
+                        throw BadRequestException(message = "can't register app, wrong prefix")
+                    }
                     config.clientRegistry.deleteClient(clientId)
                     call.respond(HttpStatusCode.NoContent)
                 }

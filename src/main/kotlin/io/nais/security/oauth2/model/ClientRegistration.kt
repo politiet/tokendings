@@ -9,6 +9,7 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.oauth2.sdk.OAuth2Error
+import io.ktor.server.plugins.*
 import io.nais.security.oauth2.config.AuthProvider
 import io.nais.security.oauth2.token.verify
 
@@ -73,6 +74,9 @@ fun ClientRegistrationRequest.verifySoftwareStatement(authProvider: AuthProvider
         authProvider.jwkSet
     ).let {
         val appId = it.getStringClaim("appId") ?: throw OAuth2Exception(OAuth2Error.INVALID_REQUEST.setDescription("appId cannot be null"))
+        if (!appId.startsWith(authProvider.prefix)) {
+            throw BadRequestException("can't register app, wrong prefix")
+        }
         SoftwareStatement(
             appId,
             it.getStringListClaim("accessPolicyInbound") ?: emptyList(),

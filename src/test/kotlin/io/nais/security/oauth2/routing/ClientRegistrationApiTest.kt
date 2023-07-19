@@ -14,6 +14,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.plugins.*
 import io.ktor.server.testing.testApplication
 import io.nais.security.oauth2.authentication.BearerTokenAuth
 import io.nais.security.oauth2.config.AuthProvider
@@ -309,6 +310,226 @@ internal class ClientRegistrationApiTest {
                 header(HttpHeaders.Authorization, "Bearer $token")
             }.status shouldBe HttpStatusCode.NoContent
             config.clientRegistry.findClient(client1.clientId) shouldBe null
+        }
+    }
+
+    // TODO: tester med prefix
+    // + jwker i cluster1 kan registrere client for cluster1
+    // + jwker i custer2 kan ikke lage client for cluster1
+    // + jwker i custer1 kan slette client for cluster1
+    // + jwker i cluster1 kan ikke slette client for custer2
+    // jwker1 signerer en software statement som jwker2 sender inn - burde ikke bli godtatt
+
+    @Test
+    fun `successful jwker in cluster1 can register client for cluster1`() {
+        val signingKeySet1 = jwkSet()
+        val signingKeySet2 = jwkSet()
+        val config = mockConfig(
+            null,
+            ClientRegistrationAuthProperties(
+                authProviders = mapOf(
+                    Pair("cluster2", AuthProvider.fromSelfSigned("cluster2", "pref2", signingKeySet2)),
+                    Pair("cluster1", AuthProvider.fromSelfSigned("cluster1", "pref1", signingKeySet1)),
+                ),
+                acceptedAudience = listOf("correct_aud"),
+            )
+        )
+        val token = issueValidSelfSignedToken(signingKeySet1, issuer = "cluster1")
+        testApplication {
+            application { tokenExchangeApp(config, DefaultRouting(config)) }
+            client.post("registration/client") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                header(HttpHeaders.Authorization, "Bearer $token")
+                setBody(
+                    ClientRegistrationRequest(
+                        clientName = "na",
+                        jwks = JsonWebKeys(jwkSet()),
+                        softwareStatementJwt = softwareStatementJwt(
+                            SoftwareStatement(
+                                appId = "pref1:ns1:client1",
+                                accessPolicyInbound = listOf("cluster1:ns1:client2"),
+                                accessPolicyOutbound = emptyList()
+                            ),
+                            signingKeySet1.keys.first() as RSAKey
+                        )
+                    ).toJson()
+                )
+            }.status shouldBe HttpStatusCode.Created
+            config.clientRegistry.findClient("pref1:ns1:client1")?.clientId shouldBe "pref1:ns1:client1"
+        }
+    }
+
+    @Test
+    fun `successful jwker in cluster2 can register client for cluster2`() {
+        val signingKeySet1 = jwkSet()
+        val signingKeySet2 = jwkSet()
+        val config = mockConfig(
+            null,
+            ClientRegistrationAuthProperties(
+                authProviders = mapOf(
+                    Pair("cluster2", AuthProvider.fromSelfSigned("cluster2", "pref2", signingKeySet2)),
+                    Pair("cluster1", AuthProvider.fromSelfSigned("cluster1", "pref1", signingKeySet1)),
+                ),
+                acceptedAudience = listOf("correct_aud"),
+            )
+        )
+        val token = issueValidSelfSignedToken(signingKeySet2, issuer = "cluster2")
+        testApplication {
+            application { tokenExchangeApp(config, DefaultRouting(config)) }
+            client.post("registration/client") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                header(HttpHeaders.Authorization, "Bearer $token")
+                setBody(
+                    ClientRegistrationRequest(
+                        clientName = "na",
+                        jwks = JsonWebKeys(jwkSet()),
+                        softwareStatementJwt = softwareStatementJwt(
+                            SoftwareStatement(
+                                appId = "pref2:ns1:client1",
+                                accessPolicyInbound = listOf("cluster1:ns1:client2"),
+                                accessPolicyOutbound = emptyList()
+                            ),
+                            signingKeySet2.keys.first() as RSAKey
+                        )
+                    ).toJson()
+                )
+            }.status shouldBe HttpStatusCode.Created
+            config.clientRegistry.findClient("pref2:ns1:client1")?.clientId shouldBe "pref2:ns1:client1"
+        }
+    }
+
+    @Test
+    fun `jwker in cluster1 can not register client for cluster2`() {
+        val signingKeySet1 = jwkSet()
+        val signingKeySet2 = jwkSet()
+        val config = mockConfig(
+            null,
+            ClientRegistrationAuthProperties(
+                authProviders = mapOf(
+                    Pair("cluster1", AuthProvider.fromSelfSigned("cluster1", "pref1", signingKeySet1)),
+                    Pair("cluster2", AuthProvider.fromSelfSigned("cluster2", "pref2", signingKeySet2)),
+                ),
+                acceptedAudience = listOf("correct_aud"),
+            )
+        )
+        val token = issueValidSelfSignedToken(signingKeySet1, issuer = "cluster1")
+        testApplication {
+            application { tokenExchangeApp(config, DefaultRouting(config)) }
+            val postResponse = client.post("registration/client") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                header(HttpHeaders.Authorization, "Bearer $token")
+                setBody(
+                    ClientRegistrationRequest(
+                        clientName = "na",
+                        jwks = JsonWebKeys(jwkSet()),
+                        softwareStatementJwt = softwareStatementJwt(
+                            SoftwareStatement(
+                                appId = "pref2:ns1:client1",
+                                accessPolicyInbound = listOf("cluster1:ns1:client2"),
+                                accessPolicyOutbound = emptyList()
+                            ),
+                            signingKeySet1.keys.first() as RSAKey
+                        )
+                    ).toJson()
+                )
+            }
+            postResponse.status shouldBe HttpStatusCode.BadRequest
+            val bodyAsText = postResponse.bodyAsText()
+            bodyAsText shouldBe "invalid request content"
+            config.clientRegistry.findClient("pref2:ns1:client1")?.clientId shouldBe null
+        }
+    }
+
+    @Test
+    fun `successful jwker in cluster1 can delete client for cluster1`() {
+        val signingKeySet1 = jwkSet()
+        val signingKeySet2 = jwkSet()
+        val config = mockConfig(
+            null,
+            ClientRegistrationAuthProperties(
+                authProviders = mapOf(
+                    Pair("cluster1", AuthProvider.fromSelfSigned("cluster1", "pref1", signingKeySet1)),
+                    Pair("cluster2", AuthProvider.fromSelfSigned("cluster2", "pref2", signingKeySet2)),
+                ),
+                acceptedAudience = listOf("correct_aud"),
+            )
+        )
+        val client1 = config.clientRegistry.let { it as MockClientRegistry }.register("pref1:ns1:client1")
+        config.clientRegistry.findClient(client1.clientId) shouldBe client1
+        val token = issueValidSelfSignedToken(signingKeySet1, issuer = "cluster1")
+        testApplication {
+            application { tokenExchangeApp(config, DefaultRouting(config)) }
+            client.delete("registration/client/${client1.clientId}") {
+                header(HttpHeaders.Authorization, "Bearer $token")
+            }.status shouldBe HttpStatusCode.NoContent
+            config.clientRegistry.findClient(client1.clientId)?.clientId shouldBe null
+        }
+    }
+
+    @Test
+    fun `jwker in cluster1 can not delete client for cluster2`() {
+        val signingKeySet1 = jwkSet()
+        val signingKeySet2 = jwkSet()
+        val config = mockConfig(
+            null,
+            ClientRegistrationAuthProperties(
+                authProviders = mapOf(
+                    Pair("cluster1", AuthProvider.fromSelfSigned("cluster1", "pref1", signingKeySet1)),
+                    Pair("cluster2", AuthProvider.fromSelfSigned("cluster2", "pref2", signingKeySet2)),
+                ),
+                acceptedAudience = listOf("correct_aud"),
+            )
+        )
+        val client2 = config.clientRegistry.let { it as MockClientRegistry }.register("pref2:ns1:client1")
+        config.clientRegistry.findClient(client2.clientId) shouldBe client2
+        val token = issueValidSelfSignedToken(signingKeySet1, issuer = "cluster1")
+        testApplication {
+            application { tokenExchangeApp(config, DefaultRouting(config)) }
+            val deleteResponse = client.delete("registration/client/${client2.clientId}") {
+                header(HttpHeaders.Authorization, "Bearer $token")
+            }
+            deleteResponse.status shouldBe HttpStatusCode.BadRequest
+            deleteResponse.bodyAsText() shouldBe "invalid request content"
+            config.clientRegistry.findClient(client2.clientId)?.clientId shouldBe client2.clientId
+        }
+    }
+
+    @Test
+    fun `jwker in cluster1 sign software statement that jwker in cluster2 sends in should give BadRequest`() {
+        val signingKeySet1 = jwkSet()
+        val signingKeySet2 = jwkSet()
+        val config = mockConfig(
+            null,
+            ClientRegistrationAuthProperties(
+                authProviders = mapOf(
+                    Pair("cluster2", AuthProvider.fromSelfSigned("cluster2", "pref2", signingKeySet2)),
+                    Pair("cluster1", AuthProvider.fromSelfSigned("cluster1", "pref1", signingKeySet1)),
+                ),
+                acceptedAudience = listOf("correct_aud"),
+            )
+        )
+        val token = issueValidSelfSignedToken(signingKeySet2, issuer = "cluster2")
+        testApplication {
+            application { tokenExchangeApp(config, DefaultRouting(config)) }
+            client.post("registration/client") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                header(HttpHeaders.Authorization, "Bearer $token")
+                setBody(
+                    ClientRegistrationRequest(
+                        clientName = "na",
+                        jwks = JsonWebKeys(jwkSet()),
+                        softwareStatementJwt = softwareStatementJwt(
+                            SoftwareStatement(
+                                appId = "pref2:ns1:client1",
+                                accessPolicyInbound = listOf("cluster1:ns1:client2"),
+                                accessPolicyOutbound = emptyList()
+                            ),
+                            signingKeySet1.keys.first() as RSAKey
+                        )
+                    ).toJson()
+                )
+            }.status shouldBe HttpStatusCode.BadRequest
+            config.clientRegistry.findClient("pref2:ns1:client1") shouldBe null
         }
     }
 
