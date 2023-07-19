@@ -59,7 +59,7 @@ jobs:
         name: Tag Docker image and push to Google Artifact Registry
         uses: docker/build-push-action@v4
         with:
-          # context: "{{defaultContext}}:app-go-web1"
+          context: "{{defaultContext}}:."
           push: true
           tags: |
             europe-north1-docker.pkg.dev/${{ vars.PROJECT_ID }}/the-new-empire/tokendings:${{ steps.get-tag.outputs.short_ref }}
