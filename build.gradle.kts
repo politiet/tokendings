@@ -3,23 +3,23 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val assertjVersion = "3.24.2"
-val flywayVersion = "9.20.0"
-val h2Version = "2.1.214"
+val flywayVersion = "9.20.1"
+val h2Version = "2.2.220"
 val hikaricpVersion = "5.0.1"
 val junitJupiterVersion = "5.9.3"
 val konfigVersion = "1.6.10.0"
 val kotestVersion = "5.6.2"
 val kotlinLoggingVersion = "3.0.5"
-val kotlinVersion = "1.8.22"
+val kotlinVersion = "1.9.0"
 val kotliqueryVersion = "1.9.0"
 val ktorVersion = "2.3.2"
 val logbackVersion = "1.4.8"
 val logstashLogbackEncoderVersion = "7.4"
-val micrometerRegistryPrometheusVersion = "1.11.1"
-val mockOAuth2ServerVersion = "0.5.9"
+val micrometerRegistryPrometheusVersion = "1.11.2"
+val mockOAuth2ServerVersion = "0.5.10"
 val mockWebServerVersion = "4.11.0"
 val mockkVersion = "1.13.3"
-val nimbusSdkVersion = "10.10.1"
+val nimbusSdkVersion = "10.11"
 val postgresqlVersion = "42.6.0"
 val testcontainersPostgresVersion = "1.18.3"
 
@@ -27,7 +27,7 @@ val mainClassKt = "io.nais.security.oauth2.TokenExchangeAppKt"
 
 plugins {
     application
-    kotlin("jvm") version "1.8.22"
+    kotlin("jvm") version "1.9.0"
     id("com.github.johnrengelman.shadow") version "8.1.1"
     id("com.github.ben-manes.versions") version "0.47.0"
     id("org.cyclonedx.bom") version "1.7.4"
